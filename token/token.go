@@ -11,8 +11,18 @@ const (
 	INT   = "INT"
 
 	// operator
-	ASSIGN = "="
-	PLUS   = "+"
+	ASSIGN   = "="
+	PLUS     = "+"
+	MINUS    = "-"
+	ASTERISk = "*"
+	SLASH    = "/"
+	BANG     = "!"
+
+	// compare
+	LT     = "<"
+	GT     = ">"
+	EQ     = "=="
+	NOT_EQ = "!="
 
 	// delimeter
 	COMMA     = ","
@@ -23,9 +33,14 @@ const (
 	LBRACE = "{"
 	RBRACE = "}"
 
-	//
+	// keywords
 	FUNCTION = "FUNCTION"
 	LET      = "LET"
+	TRUE     = "true"
+	FALSE    = "false"
+	IF       = "if"
+	ELSE     = "else"
+	RETURN   = "return"
 )
 
 type Token struct {
@@ -33,4 +48,21 @@ type Token struct {
 	Literal    string
 	SourceFile string
 	LineNo     int
+}
+
+var keywords = map[string]TokenType{
+	"fn":     FUNCTION,
+	"let":    LET,
+	"true":   TRUE,
+	"false":  FALSE,
+	"if":     IF,
+	"else":   ELSE,
+	"return": RETURN,
+}
+
+func LookupIdent(ident string) TokenType {
+	if tok, ok := keywords[ident]; ok {
+		return tok
+	}
+	return IDENT
 }
