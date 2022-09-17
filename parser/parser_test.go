@@ -10,12 +10,13 @@ func TestLetStatement(t *testing.T) {
 	input := `
 let x = 5;
 let y = 10;
-let foobar = 838383;
+let foobar = 838 383;
 `
 	l := lexer.NewLexer(input)
 	p := NewParser(l)
 
 	program := p.ParseProgram()
+	checkPeekError(t, p)
 	if program == nil {
 		t.Fatalf("ParseProgram() returned nil")
 	}
@@ -59,4 +60,17 @@ func testLetStatement(t *testing.T, s ast.Statement, name string) bool {
 		return false
 	}
 	return true
+}
+
+func checkPeekError(t *testing.T, p *Parser) {
+	errors := p.errors
+	if len(errors) == 0 {
+		return
+	}
+
+	t.Errorf("parser has %d errors", len(errors))
+	for _, msg := range p.errors {
+		t.Errorf("parse error %q", msg)
+	}
+	t.FailNow()
 }
