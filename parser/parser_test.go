@@ -1,9 +1,10 @@
 package parser
 
 import (
+	"testing"
+
 	"github.com/nicolerobin/monkey/ast"
 	"github.com/nicolerobin/monkey/lexer"
-	"testing"
 )
 
 func TestLetStatement(t *testing.T) {
@@ -73,4 +74,31 @@ func checkPeekError(t *testing.T, p *Parser) {
 		t.Errorf("parse error %q", msg)
 	}
 	t.FailNow()
+}
+
+func TestReturnStatement(t *testing.T) {
+	input := `
+return 5;
+return 10;
+return 993 322;	
+`
+
+	l := lexer.NewLexer(input)
+	p := NewParser(l)
+	program := p.ParseProgram()
+	checkPeekError(t, p)
+
+	if len(program.Statements) != 3 {
+		t.Fatalf("program.Statements does not contain 3 statements. got=%d", len(program.Statements))
+	}
+	for _, stmt := range program.Statements {
+		if returnStmt, ok := stmt.(*ast.ReturnStatement); !ok {
+			t.Errorf("stmt not *ast.ReturnStatement. got:%T", stmt)
+			continue
+		} else {
+			if returnStmt != nil && returnStmt.TokenLiteral() != "return" {
+				t.Errorf("returnStmt.TokenLiteral() not 'return', got:%q", returnStmt.TokenLiteral())
+			}
+		}
+	}
 }

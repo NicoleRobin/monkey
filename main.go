@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/nicolerobin/monkey/repl"
 	"os"
-	user2 "os/user"
+	"os/user"
+
+	"github.com/nicolerobin/monkey/repl"
 )
 
 func main() {
-	user, err := user2.Current()
+	user, err := user.Current()
 	if err != nil {
 		panic(err)
 	}
