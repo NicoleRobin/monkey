@@ -127,3 +127,30 @@ func TestIdentifierExpression(t *testing.T) {
 		}
 	}
 }
+
+func TestIntegerLiteralExpression(t *testing.T) {
+	input := "5;"
+
+	l := lexer.NewLexer(input)
+	p := NewParser(l)
+	program := p.ParseProgram()
+
+	if len(program.Statements) != 1 {
+		t.Fatalf("program has not enough statements. got:%d", len(program.Statements))
+	}
+
+	if stmt, ok := program.Statements[0].(*ast.ExpressionStatement); !ok {
+		t.Fatalf("program.Statement[0] is not ast.ExpressionStatement. got:%T", program.Statements[0])
+	} else {
+		if literal, ok := stmt.Expression.(*ast.IntegerLiteral); !ok {
+			t.Fatalf("exp not *ast.IntegerLiteral. got:%T", stmt.Expression)
+		} else {
+			if literal.Value != 5 {
+				t.Errorf("literal.Value not %d. got:%d", 5, literal.Value)
+			}
+			if literal.TokenLiteral() != "5" {
+				t.Errorf("literal.TokenLiteral() not %s. got=%s", "5", literal.TokenLiteral())
+			}
+		}
+	}
+}
