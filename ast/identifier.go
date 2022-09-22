@@ -1,8 +1,6 @@
 package ast
 
 import (
-	"bytes"
-
 	"github.com/nicolerobin/monkey/token"
 )
 
@@ -17,11 +15,7 @@ func (i *Identifier) expressionNode() {
 }
 
 func (i *Identifier) String() string {
-	var out bytes.Buffer
-
-	out.WriteString(i.TokenLiteral() + " ")
-	out.WriteString(i.Value)
-	return out.String()
+	return i.Value
 }
 
 func (i *Identifier) TokenLiteral() string {
