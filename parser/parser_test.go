@@ -332,3 +332,11 @@ func TestOperatorPrecedence(t *testing.T) {
 		}
 	}
 }
+
+func TestOperatorPrecedenceParsing(t *testing.T) {
+	input := "-1 * 2 + 3"
+	l := lexer.NewLexer(input)
+	p := NewParser(l)
+	program := p.ParseProgram()
+	t.Logf("program:%+v", program)
+}
