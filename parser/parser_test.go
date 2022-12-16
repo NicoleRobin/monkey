@@ -8,6 +8,99 @@ import (
 	"github.com/nicolerobin/monkey/lexer"
 )
 
+func testIdentifier(t *testing.T, exp ast.Expression, value string) bool {
+	ident, ok := exp.(*ast.Identifier)
+	if !ok {
+		t.Fatalf("exp is not *ast.Identifier, got=%T", exp)
+		return false
+	}
+
+	if ident.Value != value {
+		t.Fatalf("ident.Value not %s. got=%s", value, ident.Value)
+		return false
+	}
+
+	if ident.TokenLiteral() != value {
+		t.Fatalf("ident.TokenLiteral() not %s. got=%s", value, ident.TokenLiteral())
+		return false
+	}
+	return true
+}
+
+func testLiteralExpression(t *testing.T, exp ast.Expression, expected interface{}) bool {
+	switch v := expected.(type) {
+	case int:
+		return testIntegerLiteral(t, exp, int64(v))
+	case int64:
+		return testIntegerLiteral(t, exp, v)
+	case string:
+		return testIdentifier(t, exp, v)
+	case bool:
+		return testBooleanLiteral(t, exp, v)
+	}
+	t.Errorf("type of exp not handled. got=%T", exp)
+	return false
+}
+
+func testInfixExpression(t *testing.T, exp ast.Expression, left interface{}, operator string, right interface{}) bool {
+	opExp, ok := exp.(*ast.InfixExpression)
+	if !ok {
+		t.Fatalf("exp is not ast.InfixExpression. got=%T", exp)
+		return false
+	}
+
+	if !testLiteralExpression(t, opExp.Left, left) {
+		return false
+	}
+
+	if opExp.Operator != operator {
+		t.Errorf("exp.Operator is not '%s'. got=%q", operator, opExp.Operator)
+		return false
+	}
+
+	if !testLiteralExpression(t, opExp.Right, right) {
+		return false
+	}
+	return true
+}
+
+func testBooleanLiteral(t *testing.T, exp ast.Expression, value bool) bool {
+	bo, ok := exp.(*ast.Boolean)
+	if !ok {
+		t.Errorf("exp not *ast.Boolean. got=%T", exp)
+		return false
+	}
+
+	if bo.Value != value {
+		t.Errorf("bo.Value not %t. got=%t", value, bo.Value)
+		return false
+	}
+
+	if bo.TokenLiteral() != fmt.Sprintf("%t", value) {
+		t.Errorf("bo.TokenLiteral() not %t. got=%s", value, bo.TokenLiteral())
+		return false
+	}
+	return true
+}
+
+// testIntegerLiteral 判断il是否是常量表达式并且值等于value
+func testIntegerLiteral(t *testing.T, il ast.Expression, value int64) bool {
+	integ, ok := il.(*ast.IntegerLiteral)
+	if !ok {
+		t.Fatalf("il is not *ast.IntegerLiteral, got=%T", il)
+		return false
+	}
+	if integ.Value != value {
+		t.Fatalf("integ.Value is not %d. got=%d", value, integ.Value)
+		return false
+	}
+	if integ.TokenLiteral() != fmt.Sprintf("%d", value) {
+		t.Fatalf("integ.TokenLiteral() is not %d. got=%s", value, integ.TokenLiteral())
+		return false
+	}
+	return true
+}
+
 func TestLetStatement(t *testing.T) {
 	input := `
 let x = 5;
@@ -193,24 +286,6 @@ func TestParsingPrefixExpressions(t *testing.T) {
 	}
 }
 
-// testIntegerLiteral 判断il是否是常量表达式并且值等于value
-func testIntegerLiteral(t *testing.T, il ast.Expression, value int64) bool {
-	integ, ok := il.(*ast.IntegerLiteral)
-	if !ok {
-		t.Fatalf("il is not *ast.IntegerLiteral, got=%T", il)
-		return false
-	}
-	if integ.Value != value {
-		t.Fatalf("integ.Value is not %d. got=%d", value, integ.Value)
-		return false
-	}
-	if integ.TokenLiteral() != fmt.Sprintf("%d", value) {
-		t.Fatalf("integ.TokenLiteral() is not %d. got=%s", value, integ.TokenLiteral())
-		return false
-	}
-	return true
-}
-
 func TestParsingInfixExpressions(t *testing.T) {
 	infixTests := []struct {
 		input      string
@@ -245,22 +320,7 @@ func TestParsingInfixExpressions(t *testing.T) {
 		}
 
 		t.Logf("stmt:%+v", stmt)
-		exp, ok := stmt.Expression.(*ast.InfixExpression)
-		if !ok {
-			t.Fatalf("stmt.Expression is not ast.InfixExpression. got=%T", stmt.Expression)
-		}
-
-		if !testIntegerLiteral(t, exp.Left, tt.leftValue) {
-			return
-		}
-
-		if exp.Operator != tt.operator {
-			t.Fatalf("exp.Operator is not '%s'. got='%s'", tt.operator, exp.Operator)
-		}
-
-		if !testIntegerLiteral(t, exp.Right, tt.rightValue) {
-			return
-		}
+		testInfixExpression(t, stmt.Expression, tt.leftValue, tt.operator, tt.rightValue)
 	}
 }
 
@@ -339,4 +399,74 @@ func TestOperatorPrecedenceParsing(t *testing.T) {
 	p := NewParser(l)
 	program := p.ParseProgram()
 	t.Logf("program:%+v", program)
+}
+
+func TestBooleanExpression(t *testing.T) {
+	input := "true;"
+
+	l := lexer.NewLexer(input)
+	p := NewParser(l)
+	program := p.ParseProgram()
+
+	if len(program.Statements) != 1 {
+		t.Fatalf("program has not enough statements. got:%d", len(program.Statements))
+	}
+
+	if stmt, ok := program.Statements[0].(*ast.ExpressionStatement); !ok {
+		t.Fatalf("program.Statement[0] is not ast.ExpressionStatement. got:%T", program.Statements[0])
+	} else {
+		if boolean, ok := stmt.Expression.(*ast.Boolean); !ok {
+			t.Fatalf("exp not *ast.IntegerLiteral. got:%T", stmt.Expression)
+		} else {
+			if boolean.Value != true {
+				t.Errorf("boolean.Value is not '%t'. got='%t'", true, boolean.Value)
+			}
+			if boolean.TokenLiteral() != "true" {
+				t.Errorf("boolean.TokenLiteral() is not '%s'. got='%s'", "true", boolean.TokenLiteral())
+			}
+		}
+	}
+}
+
+func TestIfExpression(t *testing.T) {
+	input := `if (x < y) { x }`
+
+	l := lexer.NewLexer(input)
+	p := NewParser(l)
+	program := p.ParseProgram()
+	checkPeekError(t, p)
+
+	if len(program.Statements) != 1 {
+		t.Fatalf("program.Statements does not contain %d statements. got=%d\n", 1, len(program.Statements))
+	}
+
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("program.Statements[0] is not ast.ExpressionStatement. got=%T", program.Statements[0])
+	}
+
+	exp, ok := stmt.Expression.(*ast.IfExpression)
+	if !ok {
+		t.Fatalf("stmt.Expression is not ast.IfExpression. got=%T", stmt.Expression)
+	}
+
+	if !testInfixExpression(t, exp.Condition, "x", "<", "y") {
+		return
+	}
+
+	if len(exp.Consequence.Statements) != 1 {
+		t.Errorf("consequence is not 1 statements. got=%d\n", len(exp.Consequence.Statements))
+	}
+
+	consequence, ok := exp.Consequence.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("Statements[0] is not ast.ExpressionStatement. got=%T", exp.Consequence.Statements[0])
+	}
+
+	if !testIdentifier(t, consequence.Expression, "x") {
+		return
+	}
+	if exp.Alternative != nil {
+		t.Errorf("exp.Alternative.Statements was not nil. got=%+v", exp.Alternative)
+	}
 }
