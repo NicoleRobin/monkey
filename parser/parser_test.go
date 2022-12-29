@@ -516,3 +516,50 @@ func TestCallExpressionParsing(t *testing.T) {
 	testInfixExpression(t, exp.Arguments[1], 2, "*", 3)
 	testInfixExpression(t, exp.Arguments[2], 4, "+", 5)
 }
+
+func TestLetStatements(t *testing.T) {
+	tests := []struct {
+		input              string
+		expectedIdentifier string
+		expectedValue      interface{}
+	}{
+		{
+			input:              "let x = 5;",
+			expectedIdentifier: "x",
+			expectedValue:      5,
+		},
+		{
+			input:              "let y = true;",
+			expectedIdentifier: "y",
+			expectedValue:      true,
+		},
+		{
+			input:              "let foobar = y;",
+			expectedIdentifier: "foobar",
+			expectedValue:      "y",
+		},
+	}
+
+	for _, tt := range tests {
+		l := lexer.NewLexer(tt.input)
+		p := NewParser(l)
+		program := p.ParseProgram()
+		checkPeekError(t, p)
+
+		if len(program.Statements) != 1 {
+			t.Fatalf("program.Statements does not contain 1 statements. got=%d\n",
+				len(program.Statements))
+		}
+
+		stmt := program.Statements[0]
+		if !testLetStatement(t, stmt, tt.expectedIdentifier) {
+			return
+		}
+
+		t.Logf("stmt:%+v", stmt)
+		val := stmt.(*ast.LetStatement).Value
+		if !testLiteralExpression(t, val, tt.expectedValue) {
+			return
+		}
+	}
+}
