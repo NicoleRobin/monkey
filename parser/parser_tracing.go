@@ -13,8 +13,16 @@ func identLevel() string {
 	return strings.Repeat(traceIdentPlaceholder, traceLevel-1)
 }
 
+var enableTrace bool = false
+
+func EnableTrace(enable bool) {
+	enableTrace = enable
+}
+
 func tracePrint(fs string) {
-	fmt.Printf("%s%s\n", identLevel(), fs)
+	if enableTrace {
+		fmt.Printf("%s%s\n", identLevel(), fs)
+	}
 }
 
 func incIdent() { traceLevel = traceLevel + 1 }
