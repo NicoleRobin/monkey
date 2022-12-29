@@ -9,10 +9,26 @@ import (
 	"io"
 )
 
+const (
+	PROMPT      = ">> "
+	MONKEY_FACE = `            __,__
+   .--.  .-"     "-.  .--.
+  / .. \/  .-. .-.  \/ .. \
+ | |  '|  /   Y   \  |'  | |
+ | \   \  \ 0 | 0 /  /   / |
+  \ '- ,\.-"""""""-./, -' /
+   ''-' /_   ^ ^   _\ '-''
+       |  \._   _./  |
+       \   \ '~' /   /
+        '._ '-=-' _.'
+           '-----'
+`
+)
+
 func Start(in io.Reader, out io.Writer) {
 	scanner := bufio.NewScanner(in)
 	for {
-		_, err := fmt.Fprintf(out, ">> ")
+		_, err := fmt.Fprintf(out, PROMPT)
 		if err != nil {
 			log.Info("fmt.Fprintf() failed, err:%s", err)
 			break
@@ -24,20 +40,21 @@ func Start(in io.Reader, out io.Writer) {
 
 		line := scanner.Text()
 		l := lexer.NewLexer(line)
-		/*
-			for tok := l.NextToken(); tok.Type != token.EOF; tok = l.NextToken() {
-				fmt.Fprintf(out, "%+v\n", tok)
-			}
-
-		*/
-
 		p := parser.NewParser(l)
 		program := p.ParseProgram()
-		for i, stmt := range program.Statements {
-			_, err := fmt.Fprintf(out, "statement %d:%s\n", i, stmt.TokenLiteral())
-			if err != nil {
-				log.Error("fmt.Fprintf() failed, err:%s", err)
-			}
+		if len(p.Errors()) > 0 {
+			printParseErrors(out, p.Errors())
+			continue
 		}
+		fmt.Fprintf(out, "program:%s\n", program.String())
+	}
+}
+
+func printParseErrors(out io.Writer, errors []string) {
+	fmt.Fprintf(out, MONKEY_FACE)
+	fmt.Fprintf(out, "Woops! We ran into some monkey business here!\n")
+	fmt.Fprintf(out, " parser errors:\n")
+	for _, msg := range errors {
+		fmt.Fprintf(out, "\t"+msg+"\n")
 	}
 }
