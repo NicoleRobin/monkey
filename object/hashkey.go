@@ -25,6 +25,9 @@ func (i *Integer) HashKey() HashKey {
 
 func (s *String) HashKey() HashKey {
 	h := fnv.New64a()
-	h.Write([]byte(s.Value))
+	_, err := h.Write([]byte(s.Value))
+	if err != nil {
+		panic(err)
+	}
 	return HashKey{Type: s.Type(), Value: h.Sum64()}
 }
