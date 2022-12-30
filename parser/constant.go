@@ -9,4 +9,5 @@ const (
 	PRODUCT     // *
 	PREFIX      // -X or !X
 	CALL        // myFunction(X)
+	INDEX       // array[index]
 )

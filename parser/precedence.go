@@ -12,6 +12,7 @@ var precedences = map[token.TokenType]int{
 	token.SLASH:    PRODUCT,
 	token.ASTERISk: PRODUCT,
 	token.LPAREN:   CALL,
+	token.LBRACKET: INDEX,
 }
 
 func (p *Parser) peekPrecedence() int {
