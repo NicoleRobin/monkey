@@ -6,6 +6,7 @@ import (
 	"github.com/nicolerobin/log"
 	"github.com/nicolerobin/monkey/evaluator"
 	"github.com/nicolerobin/monkey/lexer"
+	"github.com/nicolerobin/monkey/object"
 	"github.com/nicolerobin/monkey/parser"
 	"io"
 )
@@ -28,6 +29,7 @@ const (
 
 func Start(in io.Reader, out io.Writer) {
 	scanner := bufio.NewScanner(in)
+	env := object.NewEnvironment()
 	for {
 		_, err := fmt.Fprintf(out, PROMPT)
 		if err != nil {
@@ -48,7 +50,7 @@ func Start(in io.Reader, out io.Writer) {
 			continue
 		}
 
-		evaluated := evaluator.Eval(program)
+		evaluated := evaluator.Eval(program, env)
 		if evaluated != nil {
 			io.WriteString(out, evaluated.Inspect())
 			io.WriteString(out, "\n")
