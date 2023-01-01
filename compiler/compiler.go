@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"fmt"
 	"github.com/nicolerobin/monkey/ast"
 	"github.com/nicolerobin/monkey/code"
 	"github.com/nicolerobin/monkey/object"
@@ -34,7 +35,6 @@ func (c *Compiler) Compile(node ast.Node) error {
 			return err
 		}
 	case *ast.InfixExpression:
-		// #TODO: 为什么只编译左右边表达式呢？
 		err := c.Compile(node.Left)
 		if err != nil {
 			return err
@@ -42,6 +42,13 @@ func (c *Compiler) Compile(node ast.Node) error {
 		err = c.Compile(node.Right)
 		if err != nil {
 			return err
+		}
+
+		switch node.Operator {
+		case "+":
+			c.emit(code.OpAdd)
+		default:
+			return fmt.Errorf("unknown operator %s", node.Operator)
 		}
 	case *ast.IntegerLiteral:
 		// 转换为object.Integer对象，并将该对象转换为指令添加到指令序列中

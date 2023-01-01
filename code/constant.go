@@ -7,6 +7,7 @@ type Opcode byte
 
 const (
 	OpConstant Opcode = iota // 引用常量
+	OpAdd
 )
 
 // Definition 操作指令定义
@@ -18,6 +19,7 @@ type Definition struct {
 // definitions 操作指令和其名字及操作数个数的映射关系
 var definitions = map[Opcode]*Definition{
 	OpConstant: {"OpConstant", []int{2}},
+	OpAdd:      {"OpAdd", []int{}},
 }
 
 // Lookup 根据操作码查询对应的操作指令定义
