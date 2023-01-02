@@ -3,15 +3,13 @@ package repl
 import (
 	"bufio"
 	"fmt"
-	"github.com/nicolerobin/monkey/evaluator"
-	"github.com/nicolerobin/monkey/vm"
 	"io"
 
 	"github.com/nicolerobin/log"
 	"github.com/nicolerobin/monkey/compiler"
 	"github.com/nicolerobin/monkey/lexer"
-	"github.com/nicolerobin/monkey/object"
 	"github.com/nicolerobin/monkey/parser"
+	"github.com/nicolerobin/monkey/vm"
 )
 
 const (
@@ -55,22 +53,37 @@ func StartVM(in io.Reader, out io.Writer) {
 		comp := compiler.NewCompiler()
 		err = comp.Compile(program)
 		if err != nil {
-			fmt.Fprintf(out, "Woops! Compilation failed, error: %s\n", err)
+			_, err := fmt.Fprintf(out, "Woops! Compilation failed, error: %s\n", err)
+			if err != nil {
+				log.Error("fmt.Fprintf failed, error:%s", err)
+			}
 			continue
 		}
 
 		machine := vm.NewVm(comp.Bytecode())
 		err = machine.Run()
 		if err != nil {
-			fmt.Fprintf(out, "Woops! Executing bytecode failed, error: %s\n", err)
+			_, err := fmt.Fprintf(out, "Woops! Executing bytecode failed, error: %s\n", err)
+			if err != nil {
+				log.Error("fmt.Fprintf failed, error:%s", err)
+			}
 			continue
 		}
 
-		stackTop := machine.StackTop()
-		io.WriteString(out, stackTop.Inspect())
-		io.WriteString(out, "\n")
+		// stackTop := machine.StackTop()
+		stackTop := machine.LastPoppedStackElem()
+		_, err = io.WriteString(out, stackTop.Inspect())
+		if err != nil {
+			log.Error("io.WriteString failed, error:%s", err)
+		}
+		_, err = io.WriteString(out, "\n")
+		if err != nil {
+			log.Error("io.WriteString failed, error:%s", err)
+		}
 	}
 }
+
+/*
 func StartRepl(in io.Reader, out io.Writer) {
 	scanner := bufio.NewScanner(in)
 	env := object.NewEnvironment()
@@ -97,17 +110,36 @@ func StartRepl(in io.Reader, out io.Writer) {
 		// 解释器求值
 		evaluated := evaluator.Eval(program, env)
 		if evaluated != nil {
-			io.WriteString(out, evaluated.Inspect())
-			io.WriteString(out, "\n")
+			_, err := io.WriteString(out, evaluated.Inspect())
+			if err != nil {
+				log.Error("io.WriteString failed, error:%s", err)
+			}
+			_, err = io.WriteString(out, "\n")
+			if err != nil {
+				log.Error("io.WriteString failed, error:%s", err)
+			}
 		}
 	}
 }
+*/
 
 func printParseErrors(out io.Writer, errors []string) {
-	fmt.Fprintf(out, MONKEY_FACE)
-	fmt.Fprintf(out, "Woops! We ran into some monkey business here!\n")
-	fmt.Fprintf(out, " parser errors:\n")
+	_, err := fmt.Fprintf(out, MONKEY_FACE)
+	if err != nil {
+		log.Error("fmt.Fprintf failed, error:%s", err)
+	}
+	_, err = fmt.Fprintf(out, "Woops! We ran into some monkey business here!\n")
+	if err != nil {
+		log.Error("fmt.Fprintf failed, error:%s", err)
+	}
+	_, err = fmt.Fprintf(out, " parser errors:\n")
+	if err != nil {
+		log.Error("fmt.Fprintf failed, error:%s", err)
+	}
 	for _, msg := range errors {
-		fmt.Fprintf(out, "\t"+msg+"\n")
+		_, err = fmt.Fprintf(out, "\t"+msg+"\n")
+		if err != nil {
+			log.Error("fmt.Fprintf failed, error:%s", err)
+		}
 	}
 }
