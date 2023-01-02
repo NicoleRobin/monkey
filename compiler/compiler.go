@@ -7,11 +7,25 @@ import (
 	"github.com/nicolerobin/monkey/object"
 )
 
+type Bytecode struct {
+	Instructions code.Instructions
+	Constants    []object.Object
+}
+
+type EmittedInstruction struct {
+	Opcode   code.Opcode
+	Position int
+}
+
 type Compiler struct {
 	instructions code.Instructions // 指令序列
 	constants    []object.Object   // 常量池
+
+	lastInstruction     EmittedInstruction
+	previousInstruction EmittedInstruction
 }
 
+// NewCompiler 创建Compiler
 func NewCompiler() *Compiler {
 	return &Compiler{
 		instructions: code.Instructions{},
@@ -100,6 +114,61 @@ func (c *Compiler) Compile(node ast.Node) error {
 		} else {
 			c.emit(code.OpFalse)
 		}
+	case *ast.IfExpression:
+		// 处理条件condition
+		err := c.Compile(node.Condition)
+		if err != nil {
+			return err
+		}
+
+		// 设置JumpNotTruthy指令，先使用虚假偏移量
+		jumpNotTruthyPos := c.emit(code.OpJumpNotTruthy, 9999)
+
+		// 处理结果consequence
+		err = c.Compile(node.Consequence)
+		if err != nil {
+			return err
+		}
+		if c.lastInstructionIsPop() {
+			c.removeLastPop()
+		}
+
+		// 处理else部分
+		if node.Alternative == nil {
+			// 修正OpJumpNotTruthy指令的跳转位置
+			afterConsequencePos := len(c.instructions)
+			c.changeOperand(jumpNotTruthyPos, afterConsequencePos)
+		} else {
+			// 发出带有虚假偏移的OpJump
+			jumpPos := c.emit(code.OpJump, 9999)
+
+			// 修正JumpNotTruthy指令的跳转位置
+			afterConsequencePos := len(c.instructions)
+			c.changeOperand(jumpNotTruthyPos, afterConsequencePos)
+
+			// 处理alternative
+			err = c.Compile(node.Alternative)
+			if err != nil {
+				return err
+			}
+
+			// 移除末尾的OpPop
+			if c.lastInstructionIsPop() {
+				c.removeLastPop()
+			}
+
+			// 修正OpJump指令的跳转位置
+			afterAlternativePos := len(c.instructions)
+			c.changeOperand(jumpPos, afterAlternativePos)
+		}
+
+	case *ast.BlockStatement:
+		for _, stmt := range node.Statements {
+			err := c.Compile(stmt)
+			if err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
@@ -118,13 +187,6 @@ func (c *Compiler) addConstant(obj object.Object) int {
 	return len(c.constants) - 1
 }
 
-// emit 生成指令并将指令添加到指令序列中
-func (c *Compiler) emit(op code.Opcode, operands ...int) int {
-	ins := code.Make(op, operands...)
-	pos := c.addInstruction(ins)
-	return pos
-}
-
 // addInstruction 将指令添加到指令序列中
 func (c *Compiler) addInstruction(ins code.Instructions) int {
 	posNewInstruction := len(c.instructions)
@@ -132,7 +194,47 @@ func (c *Compiler) addInstruction(ins code.Instructions) int {
 	return posNewInstruction
 }
 
-type Bytecode struct {
-	Instructions code.Instructions
-	Constants    []object.Object
+// emit 生成指令并将指令添加到指令序列中
+func (c *Compiler) emit(op code.Opcode, operands ...int) int {
+	ins := code.Make(op, operands...)
+	pos := c.addInstruction(ins)
+
+	c.setLastInstruction(op, pos)
+
+	return pos
+}
+
+// 记录最近一次指令和倒数第二次指令
+func (c *Compiler) setLastInstruction(op code.Opcode, pos int) {
+	c.previousInstruction = c.lastInstruction
+	c.lastInstruction = EmittedInstruction{
+		Opcode:   op,
+		Position: pos,
+	}
+}
+
+// 判断最后一条指令是否是OpPop
+func (c *Compiler) lastInstructionIsPop() bool {
+	return c.lastInstruction.Opcode == code.OpPop
+}
+
+// 移除最后一个OpPop
+func (c *Compiler) removeLastPop() {
+	c.instructions = c.instructions[:len(c.instructions)-1]
+	c.lastInstruction = c.previousInstruction
+}
+
+// replaceInstruction 回填操作，修正OpJumpNotTruthy的偏移量
+func (c *Compiler) replaceInstruction(pos int, newInstruction []byte) {
+	for i := 0; i < len(newInstruction); i++ {
+		c.instructions[pos+i] = newInstruction[i]
+	}
+}
+
+// changeOperand 修改操作数
+func (c *Compiler) changeOperand(opPos int, operand int) {
+	op := code.Opcode(c.instructions[opPos])
+	newInstruction := code.Make(op, operand)
+
+	c.replaceInstruction(opPos, newInstruction)
 }
