@@ -22,6 +22,8 @@ const (
 	OpJumpNotTruthy
 	OpJump
 	OpNull
+	OpSetGlobal
+	OpGetGlobal
 )
 
 // Definition 操作指令定义
@@ -48,6 +50,8 @@ var definitions = map[Opcode]*Definition{
 	OpJumpNotTruthy: {"OpJumpNotTruthy", []int{2}},
 	OpJump:          {"OpJump", []int{2}},
 	OpNull:          {"OpNull", []int{}},
+	OpSetGlobal:     {"OpSetGlobal", []int{2}},
+	OpGetGlobal:     {"OpGetGlobal", []int{2}},
 }
 
 // Lookup 根据操作码查询对应的操作指令定义

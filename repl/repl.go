@@ -3,6 +3,7 @@ package repl
 import (
 	"bufio"
 	"fmt"
+	"github.com/nicolerobin/monkey/object"
 	"io"
 
 	"github.com/nicolerobin/log"
@@ -30,6 +31,10 @@ const (
 
 func StartVM(in io.Reader, out io.Writer) {
 	scanner := bufio.NewScanner(in)
+
+	constants := []object.Object{}
+	globals := make([]object.Object, vm.GlobalSize)
+	symbolTable := compiler.NewSymbolTable()
 	for {
 		_, err := fmt.Fprintf(out, PROMPT)
 		if err != nil {
@@ -57,7 +62,7 @@ func StartVM(in io.Reader, out io.Writer) {
 			continue
 		}
 
-		comp := compiler.NewCompiler()
+		comp := compiler.NewWithState(symbolTable, constants)
 		err = comp.Compile(program)
 		if err != nil {
 			_, err := fmt.Fprintf(out, "Woops! Compilation failed, error: %s\n", err)
@@ -67,7 +72,9 @@ func StartVM(in io.Reader, out io.Writer) {
 			continue
 		}
 
-		machine := vm.NewVm(comp.Bytecode())
+		code := comp.Bytecode()
+		constants = code.Constants
+		machine := vm.NewVmWithGlobalsStore(code, globals)
 		err = machine.Run()
 		if err != nil {
 			_, err := fmt.Fprintf(out, "Woops! Executing bytecode failed, error: %s\n", err)

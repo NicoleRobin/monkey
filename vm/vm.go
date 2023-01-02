@@ -7,7 +7,10 @@ import (
 	"github.com/nicolerobin/monkey/object"
 )
 
-const StackSize = 2048
+const (
+	StackSize  = 2048
+	GlobalSize = 65536
+)
 
 var (
 	True  = &object.Boolean{Value: true}
@@ -16,21 +19,27 @@ var (
 )
 
 type VM struct {
-	constants    []object.Object
-	instructions code.Instructions
-
-	stack []object.Object
-	sp    int // 始终指向栈中的下一个空闲槽，栈顶的值是stack[sp-1]
+	constants    []object.Object   // 常量池
+	instructions code.Instructions // 指令序列
+	stack        []object.Object   // 栈
+	sp           int               // 始终指向栈中的下一个空闲槽，栈顶的值是stack[sp-1]
+	globals      []object.Object   // 存储全局变量
 }
 
 func NewVm(bytecode *compiler.Bytecode) *VM {
 	return &VM{
 		instructions: bytecode.Instructions,
 		constants:    bytecode.Constants,
-
-		stack: make([]object.Object, StackSize),
-		sp:    0,
+		stack:        make([]object.Object, StackSize),
+		sp:           0,
+		globals:      make([]object.Object, GlobalSize),
 	}
+}
+
+func NewVmWithGlobalsStore(bytecode *compiler.Bytecode, s []object.Object) *VM {
+	vm := NewVm(bytecode)
+	vm.globals = s
+	return vm
 }
 
 // StackTop 获取栈顶指令
@@ -105,6 +114,21 @@ func (vm *VM) Run() error {
 			ip = pos - 1
 		case code.OpNull:
 			err := vm.push(Null)
+			if err != nil {
+				return err
+			}
+		case code.OpSetGlobal:
+			globalIndex := code.ReadUint16(vm.instructions[ip+1:])
+			ip += 2
+
+			// 获取绑定到名称的值，并将其存储到globals中
+			vm.globals[globalIndex] = vm.pop()
+		case code.OpGetGlobal:
+			globalIndex := code.ReadUint16(vm.instructions[ip+1:])
+			ip += 2
+
+			// 从globals中取出值并将其入栈
+			err := vm.push(vm.globals[globalIndex])
 			if err != nil {
 				return err
 			}

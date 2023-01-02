@@ -23,6 +23,8 @@ type Compiler struct {
 
 	lastInstruction     EmittedInstruction
 	previousInstruction EmittedInstruction
+
+	symbolTable *SymbolTable
 }
 
 // NewCompiler 创建Compiler
@@ -30,7 +32,16 @@ func NewCompiler() *Compiler {
 	return &Compiler{
 		instructions: code.Instructions{},
 		constants:    []object.Object{},
+		symbolTable:  NewSymbolTable(),
 	}
+}
+
+// NewWithState 创建Compiler并设置状态存储
+func NewWithState(s *SymbolTable, constants []object.Object) *Compiler {
+	compiler := NewCompiler()
+	compiler.symbolTable = s
+	compiler.constants = constants
+	return compiler
 }
 
 // Compile 递归遍历AST并生成指令序列
@@ -158,7 +169,6 @@ func (c *Compiler) Compile(node ast.Node) error {
 		// 修正OpJump指令的跳转位置
 		afterAlternativePos := len(c.instructions)
 		c.changeOperand(jumpPos, afterAlternativePos)
-
 	case *ast.BlockStatement:
 		for _, stmt := range node.Statements {
 			err := c.Compile(stmt)
@@ -166,6 +176,22 @@ func (c *Compiler) Compile(node ast.Node) error {
 				return err
 			}
 		}
+	case *ast.LetStatement:
+		err := c.Compile(node.Value)
+		if err != nil {
+			return err
+		}
+
+		// 为变量创建符号
+		symbol := c.symbolTable.Define(node.Name.Value)
+		// 将符号的Index作为OpSetGlobal的参数添加到指令序列中
+		c.emit(code.OpSetGlobal, symbol.Index)
+	case *ast.Identifier:
+		sym, ok := c.symbolTable.Resolve(node.Value)
+		if !ok {
+			return fmt.Errorf("undefined variable:%s\n", node.Value)
+		}
+		c.emit(code.OpGetGlobal, sym.Index)
 	}
 	return nil
 }
