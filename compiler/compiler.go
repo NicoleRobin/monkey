@@ -192,6 +192,10 @@ func (c *Compiler) Compile(node ast.Node) error {
 			return fmt.Errorf("undefined variable:%s\n", node.Value)
 		}
 		c.emit(code.OpGetGlobal, sym.Index)
+	case *ast.StringLiteral:
+		c.emit(code.OpConstant, c.addConstant(&object.String{
+			Value: node.Value,
+		}))
 	}
 	return nil
 }

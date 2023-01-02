@@ -224,12 +224,19 @@ func (vm *VM) executeBinaryOperation(op code.Opcode) error {
 	leftType := left.Type()
 	rightType := right.Type()
 
-	if leftType == object.INTEGER_OBJ && rightType == object.INTEGER_OBJ {
-		return vm.executeBinaryIntegerOperation(op, left, right)
+	if leftType != rightType {
+		return fmt.Errorf("leftType:%s and rightType:%s not equal", leftType, rightType)
 	}
 
-	return fmt.Errorf("unsupported types for binary operation: %s %d %s",
-		leftType, op, rightType)
+	switch leftType {
+	case object.INTEGER_OBJ:
+		return vm.executeBinaryIntegerOperation(op, left, right)
+	case object.STRING_OBJ:
+		return vm.executeBinaryStringOperation(op, left, right)
+	default:
+		return fmt.Errorf("unsupported types for binary operation: %s %d %s",
+			leftType, op, rightType)
+	}
 }
 
 func (vm *VM) executeBinaryIntegerOperation(op code.Opcode, left, right object.Object) error {
@@ -250,6 +257,17 @@ func (vm *VM) executeBinaryIntegerOperation(op code.Opcode, left, right object.O
 		return fmt.Errorf("unknown integer operator: %d", op)
 	}
 	return vm.push(&object.Integer{Value: result})
+}
+
+func (vm *VM) executeBinaryStringOperation(op code.Opcode, left, right object.Object) error {
+	if op != code.OpAdd {
+		return fmt.Errorf("unknown string operator:%d", op)
+	}
+
+	leftValue := left.(*object.String).Value
+	rightValue := right.(*object.String).Value
+
+	return vm.push(&object.String{Value: leftValue + rightValue})
 }
 
 // push 将obj入栈
