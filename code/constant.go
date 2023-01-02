@@ -21,6 +21,7 @@ const (
 	OpBang
 	OpJumpNotTruthy
 	OpJump
+	OpNull
 )
 
 // Definition 操作指令定义
@@ -46,6 +47,7 @@ var definitions = map[Opcode]*Definition{
 	OpBang:          {"OpBang", []int{}},
 	OpJumpNotTruthy: {"OpJumpNotTruthy", []int{2}},
 	OpJump:          {"OpJump", []int{2}},
+	OpNull:          {"OpNull", []int{}},
 }
 
 // Lookup 根据操作码查询对应的操作指令定义

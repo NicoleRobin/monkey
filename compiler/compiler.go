@@ -133,19 +133,17 @@ func (c *Compiler) Compile(node ast.Node) error {
 			c.removeLastPop()
 		}
 
+		// 发出带有虚假偏移的OpJump
+		jumpPos := c.emit(code.OpJump, 9999)
+
+		// 修正OpJumpNotTruthy指令的跳转位置
+		afterConsequencePos := len(c.instructions)
+		c.changeOperand(jumpNotTruthyPos, afterConsequencePos)
+
 		// 处理else部分
 		if node.Alternative == nil {
-			// 修正OpJumpNotTruthy指令的跳转位置
-			afterConsequencePos := len(c.instructions)
-			c.changeOperand(jumpNotTruthyPos, afterConsequencePos)
+			c.emit(code.OpNull)
 		} else {
-			// 发出带有虚假偏移的OpJump
-			jumpPos := c.emit(code.OpJump, 9999)
-
-			// 修正JumpNotTruthy指令的跳转位置
-			afterConsequencePos := len(c.instructions)
-			c.changeOperand(jumpNotTruthyPos, afterConsequencePos)
-
 			// 处理alternative
 			err = c.Compile(node.Alternative)
 			if err != nil {
@@ -156,11 +154,10 @@ func (c *Compiler) Compile(node ast.Node) error {
 			if c.lastInstructionIsPop() {
 				c.removeLastPop()
 			}
-
-			// 修正OpJump指令的跳转位置
-			afterAlternativePos := len(c.instructions)
-			c.changeOperand(jumpPos, afterAlternativePos)
 		}
+		// 修正OpJump指令的跳转位置
+		afterAlternativePos := len(c.instructions)
+		c.changeOperand(jumpPos, afterAlternativePos)
 
 	case *ast.BlockStatement:
 		for _, stmt := range node.Statements {
