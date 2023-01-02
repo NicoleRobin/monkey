@@ -132,6 +132,17 @@ func (vm *VM) Run() error {
 			if err != nil {
 				return err
 			}
+		case code.OpArray:
+			arrayLen := int(code.ReadUint16(vm.instructions[ip+1:]))
+			ip += 2
+
+			array := vm.buildArray(vm.sp-arrayLen, vm.sp)
+			vm.sp = vm.sp - arrayLen
+
+			err := vm.push(array)
+			if err != nil {
+				return err
+			}
 		default:
 			return fmt.Errorf("unknown opcode:%d", op)
 		}
@@ -288,4 +299,15 @@ func (vm *VM) pop() object.Object {
 	o := vm.stack[vm.sp-1]
 	vm.sp--
 	return o
+}
+
+// buildArray 构建数组
+func (vm *VM) buildArray(startIndex, endIndex int) object.Object {
+	elements := make([]object.Object, endIndex-startIndex)
+
+	for i := startIndex; i < endIndex; i++ {
+		elements[i-startIndex] = vm.stack[i]
+	}
+
+	return &object.Array{Elements: elements}
 }
