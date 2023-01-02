@@ -42,6 +42,13 @@ func StartVM(in io.Reader, out io.Writer) {
 		}
 
 		line := scanner.Text()
+		if len(line) <= 0 {
+			continue
+		}
+		if line == "exit" {
+			break
+		}
+
 		l := lexer.NewLexer(line)
 		p := parser.NewParser(l)
 		program := p.ParseProgram()

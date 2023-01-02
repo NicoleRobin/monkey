@@ -11,6 +11,11 @@ import (
 	"github.com/nicolerobin/monkey/parser"
 )
 
+type vmTestCase struct {
+	input    string
+	expected interface{}
+}
+
 func parse(input string) *ast.Program {
 	l := lexer.NewLexer(input)
 	p := parser.NewParser(l)
@@ -30,11 +35,6 @@ func testIntegerObject(expected int64, actual object.Object) error {
 	return nil
 }
 
-type vmTestCase struct {
-	input    string
-	expected interface{}
-}
-
 func runVmTests(t *testing.T, tests []vmTestCase) {
 	t.Helper()
 
@@ -44,14 +44,16 @@ func runVmTests(t *testing.T, tests []vmTestCase) {
 		comp := compiler.NewCompiler()
 		err := comp.Compile(program)
 		if err != nil {
-			t.Fatalf("compiler error: %s", err)
+			t.Fatalf("comp.Compile() failed, input:%s, error: %s",
+				tt.input, err)
 		}
 
 		// t.Logf("bytecode:%+v\n", comp.Bytecode())
 		vm := NewVm(comp.Bytecode())
 		err = vm.Run()
 		if err != nil {
-			t.Fatalf("vm error: %s", err)
+			t.Fatalf("vm.Run() failed, input:%s, error: %s",
+				tt.input, err)
 		}
 
 		// stackElem := vm.StackTop()
@@ -107,6 +109,10 @@ func TestIntegerArithmetic(t *testing.T) {
 		{"5 * 2 + 10", 20},
 		{"5 + 2 * 10", 25},
 		{"5 * (2 + 10)", 60},
+		{"-5", -5},
+		{"-10", -10},
+		{"-50 + 100 + -50", 0},
+		{"(5 + 10*2 + 15/3) * 2 + -10", 50},
 	}
 
 	runVmTests(t, tests)
@@ -133,6 +139,13 @@ func TestBooleanExpressions(t *testing.T) {
 		{"(1 < 2) == false", false},
 		{"(1 > 2) == true", false},
 		{"(1 > 2) == false", true},
+		// ! 前缀运算符
+		{"!true", false},
+		{"!false", true},
+		{"!5", false},
+		{"!!true", true},
+		{"!!false", false},
+		{"!!5", true},
 	}
 
 	runVmTests(t, tests)
