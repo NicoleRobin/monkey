@@ -191,14 +191,22 @@ func (c *Compiler) Compile(node ast.Node) error {
 
 		// 为变量创建符号
 		symbol := c.symbolTable.Define(node.Name.Value)
-		// 将符号的Index作为OpSetGlobal的参数添加到指令序列中
-		c.emit(code.OpSetGlobal, symbol.Index)
+		// 将符号的Index作为OpSetGlobal或者OpSetLocal的参数添加到指令序列中
+		if symbol.Scope == GlobalScope {
+			c.emit(code.OpSetGlobal, symbol.Index)
+		} else {
+			c.emit(code.OpSetLocal, symbol.Index)
+		}
 	case *ast.Identifier:
 		sym, ok := c.symbolTable.Resolve(node.Value)
 		if !ok {
 			return fmt.Errorf("undefined variable:%s\n", node.Value)
 		}
-		c.emit(code.OpGetGlobal, sym.Index)
+		if sym.Scope == GlobalScope {
+			c.emit(code.OpGetGlobal, sym.Index)
+		} else {
+			c.emit(code.OpGetLocal, sym.Index)
+		}
 	case *ast.StringLiteral:
 		c.emit(code.OpConstant, c.addConstant(&object.String{
 			Value: node.Value,
@@ -262,10 +270,12 @@ func (c *Compiler) Compile(node ast.Node) error {
 		if !c.lastInstructionIs(code.OpReturnValue) {
 			c.emit(code.OpReturn)
 		}
+		numLocals := c.symbolTable.numDefinitions
 		ins := c.leaveScope()
 
 		compiledFn := &object.CompiledFunction{
 			Instructions: ins,
+			NumLocals:    numLocals,
 		}
 		c.emit(code.OpConstant, c.addConstant(compiledFn))
 	case *ast.ReturnStatement:
@@ -365,6 +375,9 @@ func (c *Compiler) enterScope() {
 	}
 	c.scopes = append(c.scopes, scope)
 	c.scopeIndex++
+
+	// 嵌套符号表
+	c.symbolTable = NewEnclosedSymbolTable(c.symbolTable)
 }
 
 func (c *Compiler) leaveScope() code.Instructions {
@@ -372,6 +385,9 @@ func (c *Compiler) leaveScope() code.Instructions {
 
 	c.scopes = c.scopes[:c.scopeIndex]
 	c.scopeIndex--
+
+	// 恢复符号表
+	c.symbolTable = c.symbolTable.Outer
 
 	return instructions
 }

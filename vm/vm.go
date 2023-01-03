@@ -33,7 +33,7 @@ type VM struct {
 
 func NewVm(bytecode *compiler.Bytecode) *VM {
 	mainFn := &object.CompiledFunction{Instructions: bytecode.Instructions}
-	mainFrame := NewFrame(mainFn)
+	mainFrame := NewFrame(mainFn, 0)
 
 	frames := make([]*Frame, MaxFrame)
 	frames[0] = mainFrame
@@ -193,16 +193,21 @@ func (vm *VM) Run() error {
 			if !ok {
 				return fmt.Errorf("calling non-function")
 			}
-			frame := NewFrame(fn)
+
+			// 设置栈帧基指针
+			frame := NewFrame(fn, vm.sp)
 			// log.Debug("frame:%+v", frame)
 			vm.pushFrame(frame)
+
+			// 为函数局部变量留空缺
+			vm.sp = frame.basePointer + fn.NumLocals
 		case code.OpReturnValue:
 			// 在函数栈帧中获取返回值
 			returnValue := vm.pop()
 
 			// 销毁函数栈帧
-			vm.popFrame()
-			vm.pop()
+			frame := vm.popFrame()
+			vm.sp = frame.basePointer - 1
 
 			// 将返回值压入栈
 			err := vm.push(returnValue)
@@ -210,10 +215,30 @@ func (vm *VM) Run() error {
 				return err
 			}
 		case code.OpReturn:
-			vm.popFrame()
-			vm.pop()
+			frame := vm.popFrame()
+			vm.sp = frame.basePointer - 1
 
 			err := vm.push(Null)
+			if err != nil {
+				return err
+			}
+		case code.OpSetLocal:
+			// 设置局部变量
+			localIndex := code.ReadUint8(ins[ip+1:])
+			vm.currentFrame().ip += 1
+
+			frame := vm.currentFrame()
+
+			vm.stack[frame.basePointer+int(localIndex)] = vm.pop()
+		case code.OpGetLocal:
+			// 获取局部变量
+			localIndex := code.ReadUint8(ins[ip+1:])
+			vm.currentFrame().ip += 1
+
+			frame := vm.currentFrame()
+
+			obj := vm.stack[frame.basePointer+int(localIndex)]
+			err := vm.push(obj)
 			if err != nil {
 				return err
 			}

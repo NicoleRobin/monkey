@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"github.com/nicolerobin/log"
 )
 
 type Instructions []byte
@@ -16,12 +17,18 @@ func (ins Instructions) String() string {
 	for i < len(ins) {
 		def, err := Lookup(ins[i])
 		if err != nil {
-			fmt.Fprintf(&out, "ERROR: %s\n", err)
+			_, err := fmt.Fprintf(&out, "ERROR: %s\n", err)
+			if err != nil {
+				log.Error("fmt.Fprintf() failed, error:%s", err)
+			}
 			continue
 		}
 
 		operands, read := ReadOperands(def, ins[i+1:])
-		fmt.Fprintf(&out, "%04d %s\n", i, ins.fmtInstruction(def, operands))
+		_, err = fmt.Fprintf(&out, "%04d %s\n", i, ins.fmtInstruction(def, operands))
+		if err != nil {
+			log.Error("fmt.Fprintf() failed, error:%s", err)
+		}
 		i += 1 + read
 	}
 
@@ -66,6 +73,8 @@ func Make(op Opcode, operands ...int) []byte {
 	for i, o := range operands {
 		width := def.OperandWidths[i]
 		switch width {
+		case 1:
+			instruction[offset] = uint8(o)
 		case 2:
 			binary.BigEndian.PutUint16(instruction[offset:], uint16(o))
 		}
@@ -81,6 +90,8 @@ func ReadOperands(def *Definition, ins Instructions) ([]int, int) {
 
 	for i, width := range def.OperandWidths {
 		switch width {
+		case 1:
+			operands[i] = int(ReadUint8(ins[offset:]))
 		case 2:
 			operands[i] = int(ReadUint16(ins[offset:]))
 		}
@@ -88,6 +99,11 @@ func ReadOperands(def *Definition, ins Instructions) ([]int, int) {
 	}
 
 	return operands, offset
+}
+
+// ReadUint8 读取单字节
+func ReadUint8(ins Instructions) uint8 {
+	return uint8(ins[0])
 }
 
 // ReadUint16 以大端序的方式读取两个字节数据
