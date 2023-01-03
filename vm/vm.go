@@ -188,19 +188,14 @@ func (vm *VM) Run() error {
 				return err
 			}
 		case code.OpCall:
-			// 调用函数，创建新的栈帧
-			fn, ok := vm.stack[vm.sp-1].(*object.CompiledFunction)
-			if !ok {
-				return fmt.Errorf("calling non-function")
+			// 跳过参数个数
+			numArgs := code.ReadUint8(ins[ip+1:])
+			vm.currentFrame().ip += 1
+
+			err := vm.callFunction(int(numArgs))
+			if err != nil {
+				return err
 			}
-
-			// 设置栈帧基指针
-			frame := NewFrame(fn, vm.sp)
-			// log.Debug("frame:%+v", frame)
-			vm.pushFrame(frame)
-
-			// 为函数局部变量留空缺
-			vm.sp = frame.basePointer + fn.NumLocals
 		case code.OpReturnValue:
 			// 在函数栈帧中获取返回值
 			returnValue := vm.pop()
@@ -480,4 +475,23 @@ func (vm *VM) pushFrame(f *Frame) {
 func (vm *VM) popFrame() *Frame {
 	vm.frameIndex--
 	return vm.frames[vm.frameIndex]
+}
+
+func (vm *VM) callFunction(numArgs int) error {
+	fn, ok := vm.stack[vm.sp-1-numArgs].(*object.CompiledFunction)
+	if !ok {
+		return fmt.Errorf("calling non-function")
+	}
+
+	// 检查实参是否等于形参
+	if fn.NumParameters != numArgs {
+		return fmt.Errorf("wrong number of arguments: want=%d, got=%d",
+			fn.NumParameters, numArgs)
+	}
+
+	frame := NewFrame(fn, vm.sp-numArgs)
+	vm.pushFrame(frame)
+
+	vm.sp = frame.basePointer + fn.NumLocals
+	return nil
 }
